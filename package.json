@@ -1,0 +1,27 @@
+{
+  "name": "cloudtak-plugin-sidebar-configurator",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "CloudTAK plugin — admin default sidebar layouts (Soft / Forced) for standard users and admins",
+  "license": "Apache-2.0",
+  "main": "index.js",
+  "scripts": {
+    "lint": "eslint .",
+    "check": "vue-tsc --noEmit"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@tak-ps/cloudtak": "file:../../../CloudTAK/app",
+    "@tak-ps/vue-tabler": "^5.0.0",
+    "@tabler/icons-vue": "^3.31.0",
+    "@typescript-eslint/eslint-plugin": "^8.52.0",
+    "@typescript-eslint/parser": "^8.52.0",
+    "eslint": "^10.0.1",
+    "globals": "^17.3.0",
+    "sortablejs": "^1.15.6",
+    "typescript": "^6.0.2",
+    "typescript-eslint": "^8.52.0",
+    "vue": "^3.5.26",
+    "vue-tsc": "^3.2.2"
+  }
+}
