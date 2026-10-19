@@ -90,21 +90,6 @@ function normalizeItems(raw: unknown): MenuPref[] {
   return out;
 }
 
-function isEmptyOrder(value: unknown): boolean {
-  if (value == null) return true;
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    if (!trimmed || trimmed === '[]' || trimmed === 'null') return true;
-    try {
-      return isEmptyOrder(JSON.parse(trimmed));
-    } catch {
-      return false;
-    }
-  }
-  if (Array.isArray(value)) return value.length === 0;
-  return false;
-}
-
 async function bootstrap(config: ConfigStateless): Promise<void> {
   await config.pg.execute(sql`
     CREATE TABLE IF NOT EXISTS sidebar_config (
@@ -226,12 +211,13 @@ async function pushConfig(config: ConfigStateless, stored: StoredConfig): Promis
   message?: string;
 }> {
   if (stored.mode === 'off') {
-    return { updated: 0, skipped: 0, message: 'Apply mode is Off; nothing pushed' };
+    return { updated: 0, skipped: 0, message: 'Apply Mode Is Off; Nothing Pushed' };
   }
 
-  const layout = stored.userItems;
-  if (!layout.length) {
-    return { updated: 0, skipped: 0, message: 'No standard-user layout saved yet' };
+  const userLayout = stored.userItems;
+  const adminLayout = stored.adminItems;
+  if (!userLayout.length && !(stored.manageAdminSidebar && adminLayout.length)) {
+    return { updated: 0, skipped: 0, message: 'No Layout Saved Yet' };
   }
 
   let profiles: { username: string; system_admin: boolean }[];
@@ -246,20 +232,15 @@ async function pushConfig(config: ConfigStateless, stored: StoredConfig): Promis
     return {
       updated: 0,
       skipped: 0,
-      message: 'Could not list profiles; clients will apply on next load',
+      message: 'Could Not List Profiles; Clients Will Apply On Next Load',
     };
   }
-
-  const orderRows = await query<{ username: string; value: string }>(config, sql`
-    SELECT username, value
-    FROM profile_settings
-    WHERE key = ${MENU_ORDER_KEY}
-  `);
-  const orderByUser = new Map(orderRows.map((r) => [String(r.username), r.value]));
 
   let updated = 0;
   let skipped = 0;
 
+  // Push always force-overwrites (even when apply mode is New Users Only / soft). Soft only
+  // affects automatic client-side seeding on login.
   for (const profile of profiles) {
     const username = String(profile.username || '');
     if (!username) {
@@ -268,17 +249,20 @@ async function pushConfig(config: ConfigStateless, stored: StoredConfig): Promis
     }
 
     const isAdmin = !!profile.system_admin;
-    if (isAdmin) {
-      skipped += 1;
-      continue;
-    }
+    let layout: MenuPref[] | null = null;
 
-    if (stored.mode === 'soft') {
-      const existing = orderByUser.get(username);
-      if (!isEmptyOrder(existing)) {
+    if (isAdmin) {
+      if (stored.manageAdminSidebar && adminLayout.length) {
+        layout = adminLayout;
+      } else {
         skipped += 1;
         continue;
       }
+    } else if (userLayout.length) {
+      layout = userLayout;
+    } else {
+      skipped += 1;
+      continue;
     }
 
     try {
@@ -324,7 +308,7 @@ export default async function router(schema: Schema, config: ConfigStateless) {
   await schema.put('/sidebar-config', {
     name: 'Save Sidebar Config',
     group: 'SidebarConfigurator',
-    description: 'Save Off/Soft/Forced mode and user/admin sidebar layouts (system admin only)',
+    description: 'Save Off/New Users Only/Forced mode and user/admin sidebar layouts (system admin only)',
     body: Type.Object({
       mode: ModeSchema,
       manageAdminSidebar: Type.Boolean(),
@@ -358,7 +342,7 @@ export default async function router(schema: Schema, config: ConfigStateless) {
   await schema.post('/sidebar-config/push', {
     name: 'Push Sidebar Config',
     group: 'SidebarConfigurator',
-    description: 'Apply saved standard-user layout to profiles (Off: no-op; Soft: empty only; Forced: all non-admins)',
+    description: 'Force-overwrite sidebars for all non-admin users (and admins if manageAdminSidebar). Ignores New Users Only empty-only rules. Off: no-op.',
     res: PushResultSchema,
   }, async (req, res) => {
     try {

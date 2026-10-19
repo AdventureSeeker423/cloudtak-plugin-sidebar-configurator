@@ -43,7 +43,7 @@ export default class SidebarConfigurator implements PluginInstance {
       label: 'Sidebar Configurator',
       route: ROUTE_NAME,
       tooltip: 'Sidebar Configurator (Admin)',
-      description: 'Set default sidebar layout for all users',
+      description: 'Set Default Sidebar Layout For All Users',
       icon: IconSidebarConfig,
       badge: 'A',
       requiresSystemAdmin: true,

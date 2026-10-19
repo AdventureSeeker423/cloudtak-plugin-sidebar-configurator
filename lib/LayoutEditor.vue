@@ -1,27 +1,22 @@
 <template>
   <div class='px-2 pb-3'>
-    <div class='d-flex align-items-center justify-content-between mb-2 gap-2 flex-wrap'>
-      <div class='text-secondary small'>
-        Drag to reorder. Click the eye to show or hide. Hidden items stay at the bottom.
-      </div>
-      <div class='d-flex flex-wrap gap-2'>
-        <slot name='actions' />
-        <button
-          type='button'
-          class='btn btn-sm btn-outline-secondary'
-          :disabled='disabled'
-          @click='seedFromLive'
-        >
-          Use my current sidebar
-        </button>
-      </div>
+    <div class='d-flex align-items-center justify-content-end mb-2 gap-2 flex-wrap'>
+      <slot name='actions' />
+      <button
+        type='button'
+        class='btn btn-sm btn-outline-secondary'
+        :disabled='disabled'
+        @click='seedFromLive'
+      >
+        Use My Current Sidebar
+      </button>
     </div>
 
     <div
       v-if='!items.length'
       class='text-secondary small py-3'
     >
-      No menu items available yet. Open the main menu once, then return here.
+      No Menu Items Available Yet. Open The Main Menu Once, Then Return Here.
     </div>
 
     <div
@@ -56,8 +51,8 @@
         <button
           type='button'
           class='btn btn-sm btn-ghost-secondary'
-          :title='item.visibility === "hidden" ? "Hidden — click to show" : "Visible — click to hide"'
-          :aria-label='item.visibility === "hidden" ? "Show item" : "Hide item"'
+          :title='item.visibility === "hidden" ? "Hidden — Click To Show" : "Visible — Click To Hide"'
+          :aria-label='item.visibility === "hidden" ? "Show Item" : "Hide Item"'
           :disabled='disabled'
           @click='toggleVisibility(item.key)'
         >

@@ -5,7 +5,7 @@
 # This plugin is a flat Vue/TS repo (index.ts at the root). CloudTAK's
 # WEB_PLUGINS env var can also deploy the client half, but this installer
 # also copies the server route into api/stateless/routes/ and rebuilds
-# the API image — required for shared Soft/Forced layouts.
+# the API image — required for shared New Users Only / Forced layouts.
 #
 # This script:
 #   • fetch the newest plugin source (git pull, or clone GitHub if this

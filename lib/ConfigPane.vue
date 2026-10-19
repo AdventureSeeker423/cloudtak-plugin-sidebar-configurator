@@ -18,12 +18,13 @@
     <div class='sidebar-config-pane__row'>
       <div class='sidebar-config-pane__editor'>
         <div class='px-2 pt-3 pb-2'>
-          <div class='fw-semibold mb-1'>Apply mode</div>
+          <div class='fw-semibold mb-1'>Apply Mode</div>
           <div class='btn-group w-100' role='group'>
             <button
               type='button'
               class='btn'
               :class='mode === "off" ? "btn-primary" : "btn-outline-secondary"'
+              :disabled='!writable || !!busy'
               @click='mode = "off"'
             >
               Off
@@ -32,33 +33,21 @@
               type='button'
               class='btn'
               :class='mode === "soft" ? "btn-primary" : "btn-outline-secondary"'
+              :disabled='!writable || !!busy'
               @click='mode = "soft"'
             >
-              Soft
+              New Users Only
             </button>
             <button
               type='button'
               class='btn'
               :class='mode === "forced" ? "btn-primary" : "btn-outline-secondary"'
+              :disabled='!writable || !!busy'
               @click='mode = "forced"'
             >
               Forced
             </button>
           </div>
-          <p class='text-secondary small mt-2 mb-0'>
-            <template v-if='mode === "off"'>
-              Off (default until a layout is saved): do not change anyone's sidebar.
-              Edit and save a layout, then choose Soft or Forced when you want it applied.
-            </template>
-            <template v-else-if='mode === "soft"'>
-              Soft: apply the matching layout only when a user has never customized
-              their sidebar. They can change it afterward.
-            </template>
-            <template v-else>
-              Forced: non-admins always get the Standard Users layout and cannot edit order/visibility.
-              System admins are exempt and keep their own bars.
-            </template>
-          </p>
         </div>
 
         <ul class='nav nav-tabs px-2'>
@@ -69,7 +58,7 @@
               :class='{ active: tab === "user" }'
               @click='tab = "user"'
             >
-              Standard users
+              Standard Users
             </button>
           </li>
           <li class='nav-item'>
@@ -93,34 +82,31 @@
               v-model='manageAdminSidebar'
               class='form-check-input'
               type='checkbox'
-              :disabled='!writable'
+              :disabled='!writable || !!busy'
             >
             <span class='form-check-label'>
-              Manage admin sidebars
+              Manage Admin Sidebars
             </span>
           </label>
-          <p class='text-secondary small mb-2 mt-1'>
-            Off by default — system admin sidebars are never changed.
-            Turn on to Soft-seed the Admins layout for admins with an empty sidebar.
-          </p>
         </div>
 
         <LayoutEditor
           v-if='tab === "user"'
           v-model='userItems'
           :catalog='catalog'
+          :disabled='!writable'
         />
         <LayoutEditor
           v-else
           v-model='adminItems'
           :catalog='catalog'
-          :disabled='!manageAdminSidebar'
+          :disabled='!writable || !manageAdminSidebar'
         >
           <template #actions>
             <button
               type='button'
               class='btn btn-sm btn-outline-secondary'
-              :disabled='!writable || !manageAdminSidebar || !userItems.length'
+              :disabled='!writable || !manageAdminSidebar || !userItems.length || !!busy'
               @click='copyFromStandardUsers'
             >
               Copy From Standard Users
@@ -128,31 +114,19 @@
           </template>
         </LayoutEditor>
 
-        <div class='px-2 pb-3 d-flex flex-wrap gap-2'>
-          <button
-            type='button'
-            class='btn btn-primary'
-            :disabled='busy || !writable'
-            @click='onSave'
-          >
-            {{ busy === 'save' ? 'Saving…' : 'Save' }}
-          </button>
+        <div class='px-2 pb-3 d-flex flex-wrap gap-2 align-items-center'>
           <button
             type='button'
             class='btn btn-outline-primary'
             :disabled='busy || !writable'
             @click='onPush'
           >
-            {{ busy === 'push' ? 'Pushing…' : 'Push now' }}
+            {{ busy === 'push' ? 'Overwriting…' : 'Overwrite All Toolbars' }}
           </button>
-          <button
-            type='button'
-            class='btn btn-outline-secondary'
-            :disabled='!!busy'
-            @click='reload'
-          >
-            Reload
-          </button>
+          <span
+            v-if='busy === "save"'
+            class='text-secondary small'
+          >Saving…</span>
         </div>
 
         <p
@@ -165,18 +139,18 @@
 
       <aside
         class='sidebar-config-pane__preview'
-        aria-label='Compact sidebar preview'
+        aria-label='Compact Sidebar Preview'
       >
         <SidebarPreview
           v-if='tab === "user" || manageAdminSidebar'
-          :title='tab === "user" ? "Standard users" : "Admins"'
+          :title='tab === "user" ? "Standard Users" : "Admins"'
           :prefs='activePrefs'
           :catalog='catalog'
         />
         <div
           v-else
           class='sidebar-config-pane__preview-off text-secondary small text-center px-1'
-          title='Admin sidebar management is off'
+          title='Admin Sidebar Management Is Off'
         >
           Off
         </div>
@@ -186,7 +160,7 @@
 </template>
 
 <script setup lang='ts'>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { Component } from 'vue';
 import type { PluginAPI } from '@tak-ps/cloudtak';
 import { useMapStore } from '../../../src/stores/map.ts';
@@ -199,6 +173,8 @@ const props = defineProps<{
   api: PluginAPI;
 }>();
 
+const AUTOSAVE_MS = 400;
+
 const mode = ref<ApplyMode>('off');
 const manageAdminSidebar = ref(false);
 const userItems = ref<MenuPref[]>([]);
@@ -209,6 +185,7 @@ const busy = ref<false | 'save' | 'push'>(false);
 const error = ref('');
 const status = ref('');
 const meta = ref('');
+const hydrating = ref(true);
 
 type MenuSourceItem = {
   key: string;
@@ -222,13 +199,79 @@ const activePrefs = computed(() =>
   tab.value === 'user' ? userItems.value : adminItems.value,
 );
 
+let saveTimer: ReturnType<typeof setTimeout> | undefined;
+let statusTimer: ReturnType<typeof setTimeout> | undefined;
+
+function clearSaveTimer(): void {
+  if (saveTimer !== undefined) {
+    clearTimeout(saveTimer);
+    saveTimer = undefined;
+  }
+}
+
+function scheduleAutosave(): void {
+  if (hydrating.value || !writable.value || busy.value === 'push') return;
+  clearSaveTimer();
+  saveTimer = setTimeout(() => {
+    saveTimer = undefined;
+    void persist(false);
+  }, AUTOSAVE_MS);
+}
+
+async function persist(quiet: boolean): Promise<boolean> {
+  if (!writable.value) return false;
+  if (busy.value === 'push') return false;
+
+  clearSaveTimer();
+  const prevBusy = busy.value;
+  busy.value = 'save';
+  error.value = '';
+  if (!quiet) status.value = '';
+
+  try {
+    const cfg = await saveConfig({
+      mode: mode.value,
+      manageAdminSidebar: manageAdminSidebar.value,
+      userItems: userItems.value,
+      adminItems: adminItems.value,
+    });
+
+    hydrating.value = true;
+    mode.value = cfg.mode;
+    manageAdminSidebar.value = !!cfg.manageAdminSidebar;
+    userItems.value = cfg.userItems;
+    adminItems.value = cfg.adminItems;
+    hydrating.value = false;
+
+    if (cfg.updatedAt) {
+      meta.value = `Last Saved ${cfg.updatedAt}${cfg.updatedBy ? ` By ${cfg.updatedBy}` : ''}`;
+    } else {
+      meta.value = 'Saved.';
+    }
+
+    if (!quiet) {
+      status.value = 'Saved.';
+      if (statusTimer !== undefined) clearTimeout(statusTimer);
+      statusTimer = setTimeout(() => {
+        if (status.value === 'Saved.') status.value = '';
+      }, 1500);
+    }
+    return true;
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Save Failed';
+    return false;
+  } finally {
+    busy.value = prevBusy === 'push' ? 'push' : false;
+  }
+}
+
 function copyFromStandardUsers(): void {
-  if (!manageAdminSidebar.value) return;
+  if (!manageAdminSidebar.value || !writable.value) return;
   adminItems.value = userItems.value.map((item) => ({
     key: item.key,
     visibility: item.visibility,
   }));
-  status.value = 'Copied Standard Users layout into Admins (not saved yet).';
+  status.value = 'Copied Standard Users Layout Into Admins.';
 }
 
 function refreshCatalog(): void {
@@ -262,73 +305,74 @@ function refreshCatalog(): void {
 }
 
 async function reload(): Promise<void> {
+  clearSaveTimer();
+  hydrating.value = true;
   error.value = '';
   status.value = '';
   refreshCatalog();
-  const cfg = await fetchConfig();
-  mode.value = cfg.mode;
-  manageAdminSidebar.value = !!cfg.manageAdminSidebar;
-  userItems.value = cfg.userItems;
-  adminItems.value = cfg.adminItems;
-  writable.value = !!cfg.writable;
-  if (cfg.updatedAt) {
-    meta.value = `Last saved ${cfg.updatedAt}${cfg.updatedBy ? ` by ${cfg.updatedBy}` : ''}`;
-  } else {
-    meta.value = 'No server layout saved yet.';
-  }
-}
-
-async function onSave(): Promise<void> {
-  if (!writable.value) return;
-  busy.value = 'save';
-  error.value = '';
-  status.value = '';
   try {
-    const cfg = await saveConfig({
-      mode: mode.value,
-      manageAdminSidebar: manageAdminSidebar.value,
-      userItems: userItems.value,
-      adminItems: adminItems.value,
-    });
+    const cfg = await fetchConfig();
     mode.value = cfg.mode;
     manageAdminSidebar.value = !!cfg.manageAdminSidebar;
     userItems.value = cfg.userItems;
     adminItems.value = cfg.adminItems;
-    status.value = 'Layout saved.';
+    writable.value = !!cfg.writable;
     if (cfg.updatedAt) {
-      meta.value = `Last saved ${cfg.updatedAt}${cfg.updatedBy ? ` by ${cfg.updatedBy}` : ''}`;
+      meta.value = `Last Saved ${cfg.updatedAt}${cfg.updatedBy ? ` By ${cfg.updatedBy}` : ''}`;
+    } else {
+      meta.value = 'No Server Layout Saved Yet.';
     }
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Save failed';
   } finally {
-    busy.value = false;
+    hydrating.value = false;
   }
 }
 
 async function onPush(): Promise<void> {
   if (!writable.value) return;
-  busy.value = 'push';
+
+  const adminNote = manageAdminSidebar.value
+    ? ' System Admins Will Get The Admins Layout.'
+    : ' System Admins Will Be Left Alone.';
+  const ok = window.confirm(
+    'Overwrite All Toolbars Will Replace Every Non-Admin User’s Sidebar With The Standard Users Layout'
+    + ' — Including People Who Already Customized Theirs.'
+    + adminNote
+    + '\n\nThis Ignores New Users Only Mode. Continue?',
+  );
+  if (!ok) return;
+
+  clearSaveTimer();
   error.value = '';
   status.value = '';
   try {
-    await saveConfig({
-      mode: mode.value,
-      manageAdminSidebar: manageAdminSidebar.value,
-      userItems: userItems.value,
-      adminItems: adminItems.value,
-    });
+    const saved = await persist(true);
+    if (!saved) return;
+    busy.value = 'push';
     const result = await pushConfig();
     const extra = result.message ? ` ${result.message}` : '';
-    status.value = `Push complete: updated ${result.updated}, skipped ${result.skipped}.${extra}`;
+    status.value = `Push Complete: Updated ${result.updated}, Skipped ${result.skipped}.${extra}`;
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Push failed';
+    error.value = err instanceof Error ? err.message : 'Push Failed';
   } finally {
     busy.value = false;
   }
 }
 
+watch(
+  [mode, manageAdminSidebar, userItems, adminItems],
+  () => {
+    scheduleAutosave();
+  },
+  { deep: true },
+);
+
 onMounted(() => {
   void reload();
+});
+
+onBeforeUnmount(() => {
+  clearSaveTimer();
+  if (statusTimer !== undefined) clearTimeout(statusTimer);
 });
 </script>
 

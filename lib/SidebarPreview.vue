@@ -1,7 +1,7 @@
 <template>
   <div
     class='sidebar-preview'
-    :title='`${title} — compact sidebar preview`'
+    :title='`${title} — Compact Sidebar Preview`'
   >
     <div class='sidebar-preview__rail overflow-auto'>
       <div
