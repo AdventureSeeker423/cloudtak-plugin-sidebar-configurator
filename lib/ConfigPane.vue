@@ -200,7 +200,6 @@ const activePrefs = computed(() =>
 );
 
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
-let statusTimer: ReturnType<typeof setTimeout> | undefined;
 
 function clearSaveTimer(): void {
   if (saveTimer !== undefined) {
@@ -214,11 +213,11 @@ function scheduleAutosave(): void {
   clearSaveTimer();
   saveTimer = setTimeout(() => {
     saveTimer = undefined;
-    void persist(false);
+    void persist();
   }, AUTOSAVE_MS);
 }
 
-async function persist(quiet: boolean): Promise<boolean> {
+async function persist(): Promise<boolean> {
   if (!writable.value) return false;
   if (busy.value === 'push') return false;
 
@@ -226,7 +225,6 @@ async function persist(quiet: boolean): Promise<boolean> {
   const prevBusy = busy.value;
   busy.value = 'save';
   error.value = '';
-  if (!quiet) status.value = '';
 
   try {
     const cfg = await saveConfig({
@@ -236,25 +234,12 @@ async function persist(quiet: boolean): Promise<boolean> {
       adminItems: adminItems.value,
     });
 
-    hydrating.value = true;
-    mode.value = cfg.mode;
-    manageAdminSidebar.value = !!cfg.manageAdminSidebar;
-    userItems.value = cfg.userItems;
-    adminItems.value = cfg.adminItems;
-    hydrating.value = false;
-
+    // Avoid writing local state back from the response — that re-fires the
+    // deep watch and loops autosave. Only refresh metadata.
     if (cfg.updatedAt) {
       meta.value = `Last Saved ${cfg.updatedAt}${cfg.updatedBy ? ` By ${cfg.updatedBy}` : ''}`;
     } else {
-      meta.value = 'Saved.';
-    }
-
-    if (!quiet) {
-      status.value = 'Saved.';
-      if (statusTimer !== undefined) clearTimeout(statusTimer);
-      statusTimer = setTimeout(() => {
-        if (status.value === 'Saved.') status.value = '';
-      }, 1500);
+      meta.value = 'Last Saved Just Now.';
     }
     return true;
   } catch (err) {
@@ -345,7 +330,7 @@ async function onPush(): Promise<void> {
   error.value = '';
   status.value = '';
   try {
-    const saved = await persist(true);
+    const saved = await persist();
     if (!saved) return;
     busy.value = 'push';
     const result = await pushConfig();
@@ -372,7 +357,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   clearSaveTimer();
-  if (statusTimer !== undefined) clearTimeout(statusTimer);
 });
 </script>
 
