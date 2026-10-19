@@ -34,9 +34,15 @@
         <span class='drag-handle text-secondary' style='cursor: grab'>
           <IconGripVertical :size='18' stroke='1.5' />
         </span>
-        <div class='flex-grow-1 text-truncate'>
-          <div class='fw-semibold text-truncate'>{{ item.label }}</div>
-          <div class='small text-secondary text-truncate'>{{ item.key }}</div>
+        <component
+          :is='item.icon'
+          v-if='item.icon'
+          class='sidebar-config-item-icon flex-shrink-0'
+          :size='24'
+          stroke='1.5'
+        />
+        <div class='flex-grow-1 text-truncate fw-semibold'>
+          {{ item.label }}
         </div>
         <button
           type='button'
@@ -55,6 +61,7 @@
 
 <script setup lang='ts'>
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import type { Component } from 'vue';
 import Sortable from 'sortablejs';
 import {
   IconEye,
@@ -67,6 +74,7 @@ import type { MenuPref, MenuVisibility } from './constants.ts';
 export type CatalogItem = {
   key: string;
   label: string;
+  icon?: Component;
 };
 
 const props = defineProps<{
@@ -182,3 +190,11 @@ watch(
   { immediate: true, deep: true },
 );
 </script>
+
+<style scoped>
+.sidebar-config-item-icon {
+  width: 24px;
+  height: 24px;
+  color: inherit;
+}
+</style>
