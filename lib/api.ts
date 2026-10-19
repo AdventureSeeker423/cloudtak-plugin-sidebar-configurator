@@ -2,6 +2,7 @@ import { std } from '../../../src/std.ts';
 import {
   API_BASE,
   DEFAULT_CONFIG,
+  normalizeApplyMode,
   type ApplyMode,
   type MenuPref,
   type MenuVisibility,
@@ -33,12 +34,15 @@ function asItems(raw: unknown): MenuPref[] {
 
 function parseConfig(raw: unknown): SidebarConfig {
   const row = (raw && typeof raw === 'object') ? raw as Record<string, unknown> : {};
+  const updatedAt = row.updatedAt != null ? String(row.updatedAt) : null;
+  // Until an admin saves a layout, treat apply mode as Off regardless of DB default.
+  const mode = updatedAt ? normalizeApplyMode(row.mode) : 'off';
   return {
-    mode: row.mode === 'forced' ? 'forced' : 'soft',
+    mode,
     manageAdminSidebar: !!row.manageAdminSidebar,
     userItems: asItems(row.userItems),
     adminItems: asItems(row.adminItems),
-    updatedAt: row.updatedAt != null ? String(row.updatedAt) : null,
+    updatedAt,
     updatedBy: row.updatedBy != null ? String(row.updatedBy) : null,
     writable: !!row.writable,
     isSystemAdmin: !!row.isSystemAdmin,
@@ -78,7 +82,7 @@ export type PushResult = {
 export async function pushConfig(): Promise<PushResult> {
   const r = await std(`${API_BASE}/push`, { method: 'POST' }) as Record<string, unknown>;
   return {
-    mode: r.mode === 'forced' ? 'forced' : 'soft',
+    mode: normalizeApplyMode(r.mode),
     updated: Number(r.updated) || 0,
     skipped: Number(r.skipped) || 0,
     message: r.message != null ? String(r.message) : undefined,

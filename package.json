@@ -1,8 +1,8 @@
 {
   "name": "cloudtak-plugin-sidebar-configurator",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
-  "description": "CloudTAK plugin — admin default sidebar layouts (Soft / Forced) for standard users and admins",
+  "description": "CloudTAK plugin — admin default sidebar layouts (Off / Soft / Forced) for standard users and admins",
   "license": "Apache-2.0",
   "main": "index.js",
   "scripts": {

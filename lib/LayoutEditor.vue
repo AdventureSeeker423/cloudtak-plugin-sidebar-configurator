@@ -2,7 +2,7 @@
   <div class='px-2 pb-3'>
     <div class='d-flex align-items-center justify-content-between mb-2 gap-2 flex-wrap'>
       <div class='text-secondary small'>
-        Drag to reorder. Click the eye to cycle Full → Partial → Hidden.
+        Drag to reorder. Click the eye to show or hide. Hidden items stay at the bottom.
       </div>
       <div class='d-flex flex-wrap gap-2'>
         <slot name='actions' />
@@ -34,6 +34,7 @@
         v-for='item in items'
         :key='item.key'
         class='list-group-item d-flex align-items-center gap-2 px-2 py-2'
+        :class='{ "sidebar-config-item--hidden": item.visibility === "hidden" }'
         :data-key='item.key'
       >
         <span
@@ -55,13 +56,21 @@
         <button
           type='button'
           class='btn btn-sm btn-ghost-secondary'
-          :title='`Visibility: ${item.visibility}`'
+          :title='item.visibility === "hidden" ? "Hidden — click to show" : "Visible — click to hide"'
+          :aria-label='item.visibility === "hidden" ? "Show item" : "Hide item"'
           :disabled='disabled'
-          @click='cycleVisibility(item.key)'
+          @click='toggleVisibility(item.key)'
         >
-          <IconEye v-if='item.visibility === "full"' :size='18' stroke='1.5' />
-          <IconEyeDotted v-else-if='item.visibility === "partial"' :size='18' stroke='1.5' />
-          <IconEyeOff v-else :size='18' stroke='1.5' />
+          <IconEye
+            v-if='item.visibility !== "hidden"'
+            :size='18'
+            stroke='1.5'
+          />
+          <IconEyeOff
+            v-else
+            :size='18'
+            stroke='1.5'
+          />
         </button>
       </div>
     </div>
@@ -74,7 +83,6 @@ import type { Component } from 'vue';
 import Sortable from 'sortablejs';
 import {
   IconEye,
-  IconEyeDotted,
   IconEyeOff,
   IconGripVertical,
 } from '@tabler/icons-vue';
@@ -85,6 +93,23 @@ export type CatalogItem = {
   label: string;
   icon?: Component;
 };
+
+/** UI only supports full | hidden; legacy partial is treated as full. */
+function normalizeVisibility(raw: unknown): 'full' | 'hidden' {
+  return String(raw || '').trim().toLowerCase() === 'hidden' ? 'hidden' : 'full';
+}
+
+function withHiddenAtBottom(
+  list: Array<{ key: string; visibility: MenuVisibility }>,
+): Array<{ key: string; visibility: 'full' | 'hidden' }> {
+  const visible: Array<{ key: string; visibility: 'full' | 'hidden' }> = [];
+  const hidden: Array<{ key: string; visibility: 'full' | 'hidden' }> = [];
+  for (const row of list) {
+    const visibility = normalizeVisibility(row.visibility);
+    (visibility === 'hidden' ? hidden : visible).push({ key: row.key, visibility });
+  }
+  return [...visible, ...hidden];
+}
 
 const props = defineProps<{
   modelValue: MenuPref[];
@@ -105,39 +130,40 @@ const items = computed(() => {
     ? props.modelValue
     : props.catalog.map((c) => ({ key: c.key, visibility: 'full' as const }));
 
-  const ordered: Array<CatalogItem & { visibility: MenuVisibility }> = [];
+  const ordered: Array<CatalogItem & { visibility: 'full' | 'hidden' }> = [];
   const seen = new Set<string>();
 
   for (const pref of prefs) {
     const cat = byKey.get(pref.key);
     if (!cat) continue;
-    ordered.push({ ...cat, visibility: pref.visibility || 'full' });
+    ordered.push({ ...cat, visibility: normalizeVisibility(pref.visibility) });
     seen.add(pref.key);
   }
   for (const cat of props.catalog) {
     if (seen.has(cat.key)) continue;
     ordered.push({ ...cat, visibility: 'full' });
   }
-  return ordered;
+  return withHiddenAtBottom(ordered).map((row) => {
+    const cat = byKey.get(row.key)!;
+    return { ...cat, visibility: row.visibility };
+  });
 });
 
 function emitFromItems(next: Array<{ key: string; visibility: MenuVisibility }>): void {
-  emit('update:modelValue', next.map((i) => ({
-    key: i.key,
-    visibility: i.visibility,
-  })));
+  emit(
+    'update:modelValue',
+    withHiddenAtBottom(next).map((i) => ({
+      key: i.key,
+      visibility: i.visibility,
+    })),
+  );
 }
 
-function cycleVisibility(key: string): void {
+function toggleVisibility(key: string): void {
   if (props.disabled) return;
-  const nextMap: Record<MenuVisibility, MenuVisibility> = {
-    full: 'partial',
-    partial: 'hidden',
-    hidden: 'full',
-  };
   emitFromItems(items.value.map((i) => (
     i.key === key
-      ? { key: i.key, visibility: nextMap[i.visibility] || 'full' }
+      ? { key: i.key, visibility: i.visibility === 'hidden' ? 'full' : 'hidden' }
       : { key: i.key, visibility: i.visibility }
   )));
 }
@@ -148,7 +174,7 @@ function seedFromLive(): void {
     const existing = props.modelValue.find((p) => p.key === c.key);
     return {
       key: c.key,
-      visibility: existing?.visibility || 'full',
+      visibility: normalizeVisibility(existing?.visibility),
     };
   }));
 }
@@ -179,7 +205,7 @@ function syncSortable(): void {
 }
 
 watch(
-  () => [listEl.value, items.value.map((i) => i.key).join('|'), props.disabled],
+  () => [listEl.value, items.value.map((i) => `${i.key}:${i.visibility}`).join('|'), props.disabled],
   async () => {
     await nextTick();
     syncSortable();
@@ -195,7 +221,7 @@ onBeforeUnmount(() => {
 watch(
   () => props.catalog,
   (catalog) => {
-    if (!props.length) return;
+    if (!catalog.length) return;
     if (props.modelValue.length) return;
     emitFromItems(catalog.map((c) => ({ key: c.key, visibility: 'full' })));
   },
@@ -208,6 +234,10 @@ watch(
   width: 24px;
   height: 24px;
   color: inherit;
+}
+
+.sidebar-config-item--hidden {
+  opacity: 0.55;
 }
 
 .sidebar-config-layout--disabled {

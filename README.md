@@ -10,12 +10,14 @@ Requires CloudTAK **13.102** or newer. Apache-2.0.
 - **Two layouts**
   - **Standard users** — applied to non-admins
   - **Admins** — optional; **off by default** so system admin sidebars are never touched. Enable “Manage admin sidebars” to Soft-seed admins, and use **Copy From Standard Users** to start from the standard layout.
-- **Order + visibility** for each item: Full, Partial (hidden from compact rail), or Hidden
-- **Apply modes**
-  - **Soft (default)** — apply the matching layout only when that user’s `menu_order` is empty. Users can customize afterward and are not overwritten.
+- **Order + visibility** for each item: eye = visible, eye-off = hidden (hidden items sort to the bottom of the configurator list)
+- **Apply modes** (listed Off → Soft → Forced)
+  - **Off (default on install / until a layout is saved)** — do not change anyone’s sidebar.
+  - **Soft** — apply the matching layout only when that user’s `menu_order` is empty. Users can customize afterward and are not overwritten.
   - **Forced** — non-admins always get the Standard Users layout and cannot change order/visibility. **System admins are exempt** and keep their own bars.
 - **Save** stores the server-wide config.
 - **Push now** bulk-writes `menu::order` on profiles:
+  - Off: no-op
   - Soft: only users with an empty order
   - Forced: all non-admin users  
   If push cannot list profiles, clients still apply on the next load.
@@ -52,13 +54,13 @@ Symlink this checkout to `CloudTAK/app/plugins/sidebar-configurator`, copy or sy
 
 1. Sign in as a CloudTAK **system admin**.
 2. Open **Sidebar Configurator** from the right-side menu.
-3. Choose **Soft** or **Forced**.
-4. Edit **Standard users** and **Admins** tabs (drag to reorder, eye icon for visibility).
+3. Choose **Off**, **Soft**, or **Forced** (Off is first and is the default until you save a layout).
+4. Edit **Standard users** and **Admins** tabs (drag to reorder; eye toggle to show/hide).
 5. Optionally click **Use my current sidebar** to seed a tab from your live menu.
-6. **Save**, then **Push now** if you want existing users updated immediately.
+6. **Save**, then **Push now** if you want existing users updated immediately (no effect while Off).
 
 ## Notes
 
 - Forced lock of the pencil/reorder UI is best-effort (CSS + client method wrap) and only affects non-admins.
 - New plugin menu keys that appear after a layout was saved append at the end until an admin re-saves.
-- The configurator button itself is admin-only; Soft/Forced apply still runs for every user on plugin `enable()`.
+- The configurator button itself is admin-only; Soft/Forced apply still runs for every user on plugin `enable()` when that mode is active.

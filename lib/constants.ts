@@ -4,7 +4,7 @@ export const ROUTE_PATH = 'plugin-sidebar-configurator';
 export const API_BASE = '/api/sidebar-config';
 
 export type MenuVisibility = 'full' | 'partial' | 'hidden';
-export type ApplyMode = 'soft' | 'forced';
+export type ApplyMode = 'off' | 'soft' | 'forced';
 
 export type MenuPref = {
   key: string;
@@ -24,8 +24,15 @@ export type SidebarConfig = {
 };
 
 export const DEFAULT_CONFIG: SidebarConfig = {
-  mode: 'soft',
+  mode: 'off',
   manageAdminSidebar: false,
   userItems: [],
   adminItems: [],
 };
+
+export function normalizeApplyMode(raw: unknown): ApplyMode {
+  const v = String(raw || '').trim().toLowerCase();
+  if (v === 'forced') return 'forced';
+  if (v === 'soft') return 'soft';
+  return 'off';
+}

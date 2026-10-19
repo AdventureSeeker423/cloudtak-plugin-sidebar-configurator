@@ -18,6 +18,7 @@ const MenuPrefSchema = Type.Object({
 });
 
 const ModeSchema = Type.Union([
+  Type.Literal('off'),
   Type.Literal('soft'),
   Type.Literal('forced'),
 ]);
@@ -41,7 +42,7 @@ const PushResultSchema = Type.Object({
 });
 
 type MenuPref = { key: string; visibility: 'full' | 'partial' | 'hidden' };
-type ApplyMode = 'soft' | 'forced';
+type ApplyMode = 'off' | 'soft' | 'forced';
 type StoredConfig = {
   mode: ApplyMode;
   manageAdminSidebar: boolean;
@@ -50,6 +51,13 @@ type StoredConfig = {
   updatedAt: string | null;
   updatedBy: string | null;
 };
+
+function normalizeApplyMode(raw: unknown): ApplyMode {
+  const v = String(raw || '').trim().toLowerCase();
+  if (v === 'forced') return 'forced';
+  if (v === 'soft') return 'soft';
+  return 'off';
+}
 
 const CONFIG_ID = 1;
 const MENU_ORDER_KEY = 'menu::order';
@@ -101,7 +109,7 @@ async function bootstrap(config: ConfigStateless): Promise<void> {
   await config.pg.execute(sql`
     CREATE TABLE IF NOT EXISTS sidebar_config (
       id INTEGER PRIMARY KEY,
-      mode TEXT NOT NULL DEFAULT 'soft',
+      mode TEXT NOT NULL DEFAULT 'off',
       manage_admin_sidebar BOOLEAN NOT NULL DEFAULT false,
       user_items TEXT NOT NULL DEFAULT '[]',
       admin_items TEXT NOT NULL DEFAULT '[]',
@@ -115,8 +123,16 @@ async function bootstrap(config: ConfigStateless): Promise<void> {
   `);
   await config.pg.execute(sql`
     INSERT INTO sidebar_config (id, mode, manage_admin_sidebar, user_items, admin_items)
-    VALUES (${CONFIG_ID}, ${'soft'}, ${false}, ${'[]'}, ${'[]'})
+    VALUES (${CONFIG_ID}, ${'off'}, ${false}, ${'[]'}, ${'[]'})
     ON CONFLICT (id) DO NOTHING
+  `);
+  // Older installs seeded Soft with no saved layout — treat as Off until an admin saves.
+  await config.pg.execute(sql`
+    UPDATE sidebar_config
+    SET mode = ${'off'}
+    WHERE id = ${CONFIG_ID}
+      AND updated_at IS NULL
+      AND mode = ${'soft'}
   `);
 }
 
@@ -136,7 +152,7 @@ async function readConfig(config: ConfigStateless): Promise<StoredConfig> {
 
   if (!rows.length) {
     return {
-      mode: 'soft',
+      mode: 'off',
       manageAdminSidebar: false,
       userItems: [],
       adminItems: [],
@@ -146,7 +162,9 @@ async function readConfig(config: ConfigStateless): Promise<StoredConfig> {
   }
 
   const row = rows[0];
-  const mode = row.mode === 'forced' ? 'forced' : 'soft';
+  const updatedAt = row.updated_at ? String(row.updated_at) : null;
+  // No admin save yet → Off, even if an older bootstrap row still says Soft.
+  const mode = updatedAt ? normalizeApplyMode(row.mode) : 'off';
 
   const parse = (raw: unknown): unknown => {
     if (typeof raw === 'string') {
@@ -160,7 +178,7 @@ async function readConfig(config: ConfigStateless): Promise<StoredConfig> {
     manageAdminSidebar: row.manage_admin_sidebar === true || row.manage_admin_sidebar === 't' || row.manage_admin_sidebar === 'true',
     userItems: normalizeItems(parse(row.user_items)),
     adminItems: normalizeItems(parse(row.admin_items)),
-    updatedAt: row.updated_at ? String(row.updated_at) : null,
+    updatedAt,
     updatedBy: row.updated_by ? String(row.updated_by) : null,
   };
 }
@@ -207,6 +225,10 @@ async function pushConfig(config: ConfigStateless, stored: StoredConfig): Promis
   skipped: number;
   message?: string;
 }> {
+  if (stored.mode === 'off') {
+    return { updated: 0, skipped: 0, message: 'Apply mode is Off; nothing pushed' };
+  }
+
   const layout = stored.userItems;
   if (!layout.length) {
     return { updated: 0, skipped: 0, message: 'No standard-user layout saved yet' };
@@ -302,7 +324,7 @@ export default async function router(schema: Schema, config: ConfigStateless) {
   await schema.put('/sidebar-config', {
     name: 'Save Sidebar Config',
     group: 'SidebarConfigurator',
-    description: 'Save Soft/Forced mode and user/admin sidebar layouts (system admin only)',
+    description: 'Save Off/Soft/Forced mode and user/admin sidebar layouts (system admin only)',
     body: Type.Object({
       mode: ModeSchema,
       manageAdminSidebar: Type.Boolean(),
@@ -313,7 +335,7 @@ export default async function router(schema: Schema, config: ConfigStateless) {
   }, async (req, res) => {
     try {
       const user = await Auth.as_user(config, req, { admin: true });
-      const mode = req.body.mode === 'forced' ? 'forced' : 'soft';
+      const mode = normalizeApplyMode(req.body.mode);
       const manageAdminSidebar = !!req.body.manageAdminSidebar;
       const userItems = normalizeItems(req.body.userItems);
       const adminItems = normalizeItems(req.body.adminItems);
@@ -336,7 +358,7 @@ export default async function router(schema: Schema, config: ConfigStateless) {
   await schema.post('/sidebar-config/push', {
     name: 'Push Sidebar Config',
     group: 'SidebarConfigurator',
-    description: 'Apply saved standard-user layout to profiles (Soft: empty only; Forced: all non-admins)',
+    description: 'Apply saved standard-user layout to profiles (Off: no-op; Soft: empty only; Forced: all non-admins)',
     res: PushResultSchema,
   }, async (req, res) => {
     try {

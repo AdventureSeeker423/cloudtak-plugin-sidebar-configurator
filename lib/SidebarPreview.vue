@@ -83,9 +83,9 @@ const orderedItems = computed((): PreviewItem[] => {
   return out;
 });
 
-/** Compact CloudTAK rail: only full-visibility items (partial + hidden omitted). */
+/** Compact CloudTAK rail: only visible (non-hidden) items. */
 const compactItems = computed(() =>
-  orderedItems.value.filter((i) => i.visibility === 'full'),
+  orderedItems.value.filter((i) => i.visibility !== 'hidden'),
 );
 </script>
 

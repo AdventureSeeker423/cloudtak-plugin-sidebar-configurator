@@ -23,6 +23,14 @@
             <button
               type='button'
               class='btn'
+              :class='mode === "off" ? "btn-primary" : "btn-outline-secondary"'
+              @click='mode = "off"'
+            >
+              Off
+            </button>
+            <button
+              type='button'
+              class='btn'
               :class='mode === "soft" ? "btn-primary" : "btn-outline-secondary"'
               @click='mode = "soft"'
             >
@@ -38,8 +46,12 @@
             </button>
           </div>
           <p class='text-secondary small mt-2 mb-0'>
-            <template v-if='mode === "soft"'>
-              Soft (default): apply the matching layout only when a user has never customized
+            <template v-if='mode === "off"'>
+              Off (default until a layout is saved): do not change anyone's sidebar.
+              Edit and save a layout, then choose Soft or Forced when you want it applied.
+            </template>
+            <template v-else-if='mode === "soft"'>
+              Soft: apply the matching layout only when a user has never customized
               their sidebar. They can change it afterward.
             </template>
             <template v-else>
@@ -187,7 +199,7 @@ const props = defineProps<{
   api: PluginAPI;
 }>();
 
-const mode = ref<ApplyMode>('soft');
+const mode = ref<ApplyMode>('off');
 const manageAdminSidebar = ref(false);
 const userItems = ref<MenuPref[]>([]);
 const adminItems = ref<MenuPref[]>([]);

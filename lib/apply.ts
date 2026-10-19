@@ -52,6 +52,11 @@ export async function applySidebarConfig(api: PluginAPI): Promise<SidebarConfig>
   }
   if (!menu) return config;
 
+  // Off: leave every user's sidebar alone.
+  if (config.mode === 'off') {
+    return config;
+  }
+
   // System admins: never touch their sidebar unless manageAdminSidebar is on.
   if (admin && !config.manageAdminSidebar) {
     return config;
