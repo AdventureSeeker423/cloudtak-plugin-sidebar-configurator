@@ -1,16 +1,20 @@
 <template>
-  <div class='w-100 px-2 pb-3'>
+  <div class='px-2 pb-3'>
     <div class='d-flex align-items-center justify-content-between mb-2 gap-2 flex-wrap'>
       <div class='text-secondary small'>
         Drag to reorder. Click the eye to cycle Full → Partial → Hidden.
       </div>
-      <button
-        type='button'
-        class='btn btn-sm btn-outline-secondary'
-        @click='seedFromLive'
-      >
-        Use my current sidebar
-      </button>
+      <div class='d-flex flex-wrap gap-2'>
+        <slot name='actions' />
+        <button
+          type='button'
+          class='btn btn-sm btn-outline-secondary'
+          :disabled='disabled'
+          @click='seedFromLive'
+        >
+          Use my current sidebar
+        </button>
+      </div>
     </div>
 
     <div
@@ -24,6 +28,7 @@
       v-else
       ref='listEl'
       class='list-group list-group-flush sidebar-config-layout-list'
+      :class='{ "sidebar-config-layout--disabled": disabled }'
     >
       <div
         v-for='item in items'
@@ -31,7 +36,10 @@
         class='list-group-item d-flex align-items-center gap-2 px-2 py-2'
         :data-key='item.key'
       >
-        <span class='drag-handle text-secondary' style='cursor: grab'>
+        <span
+          class='drag-handle text-secondary'
+          :style='disabled ? "cursor: not-allowed" : "cursor: grab"'
+        >
           <IconGripVertical :size='18' stroke='1.5' />
         </span>
         <component
@@ -48,6 +56,7 @@
           type='button'
           class='btn btn-sm btn-ghost-secondary'
           :title='`Visibility: ${item.visibility}`'
+          :disabled='disabled'
           @click='cycleVisibility(item.key)'
         >
           <IconEye v-if='item.visibility === "full"' :size='18' stroke='1.5' />
@@ -80,6 +89,7 @@ export type CatalogItem = {
 const props = defineProps<{
   modelValue: MenuPref[];
   catalog: CatalogItem[];
+  disabled?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -119,6 +129,7 @@ function emitFromItems(next: Array<{ key: string; visibility: MenuVisibility }>)
 }
 
 function cycleVisibility(key: string): void {
+  if (props.disabled) return;
   const nextMap: Record<MenuVisibility, MenuVisibility> = {
     full: 'partial',
     partial: 'hidden',
@@ -132,6 +143,7 @@ function cycleVisibility(key: string): void {
 }
 
 function seedFromLive(): void {
+  if (props.disabled) return;
   emitFromItems(props.catalog.map((c) => {
     const existing = props.modelValue.find((p) => p.key === c.key);
     return {
@@ -146,7 +158,7 @@ function syncSortable(): void {
     sortable.destroy();
     sortable = undefined;
   }
-  if (!listEl.value || items.value.length < 2) return;
+  if (props.disabled || !listEl.value || items.value.length < 2) return;
   sortable = new Sortable(listEl.value, {
     animation: 150,
     handle: '.drag-handle',
@@ -167,7 +179,7 @@ function syncSortable(): void {
 }
 
 watch(
-  () => [listEl.value, items.value.map((i) => i.key).join('|')],
+  () => [listEl.value, items.value.map((i) => i.key).join('|'), props.disabled],
   async () => {
     await nextTick();
     syncSortable();
@@ -196,5 +208,10 @@ watch(
   width: 24px;
   height: 24px;
   color: inherit;
+}
+
+.sidebar-config-layout--disabled {
+  opacity: 0.55;
+  pointer-events: none;
 }
 </style>

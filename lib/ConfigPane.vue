@@ -1,5 +1,5 @@
 <template>
-  <div class='w-100 sidebar-config-pane'>
+  <div class='col-12 sidebar-config-pane'>
     <div
       v-if='error'
       class='alert alert-danger mx-2 mt-2 mb-0'
@@ -15,9 +15,9 @@
       {{ status }}
     </div>
 
-    <div class='sidebar-config-pane__grid px-2 pt-3 pb-3'>
-      <div class='sidebar-config-pane__editor d-flex flex-column min-w-0'>
-        <div class='pb-2'>
+    <div class='sidebar-config-pane__row'>
+      <div class='sidebar-config-pane__editor'>
+        <div class='px-2 pt-3 pb-2'>
           <div class='fw-semibold mb-1'>Apply mode</div>
           <div class='btn-group w-100' role='group'>
             <button
@@ -49,7 +49,7 @@
           </p>
         </div>
 
-        <ul class='nav nav-tabs'>
+        <ul class='nav nav-tabs px-2'>
           <li class='nav-item'>
             <button
               type='button'
@@ -72,20 +72,51 @@
           </li>
         </ul>
 
-        <div class='sidebar-config-pane__editor-scroll flex-grow-1 min-h-0'>
-          <LayoutEditor
-            v-if='tab === "user"'
-            v-model='userItems'
-            :catalog='catalog'
-          />
-          <LayoutEditor
-            v-else
-            v-model='adminItems'
-            :catalog='catalog'
-          />
+        <div
+          v-if='tab === "admin"'
+          class='px-2 pt-2 pb-1'
+        >
+          <label class='form-check'>
+            <input
+              v-model='manageAdminSidebar'
+              class='form-check-input'
+              type='checkbox'
+              :disabled='!writable'
+            >
+            <span class='form-check-label'>
+              Manage admin sidebars
+            </span>
+          </label>
+          <p class='text-secondary small mb-2 mt-1'>
+            Off by default — system admin sidebars are never changed.
+            Turn on to Soft-seed the Admins layout for admins with an empty sidebar.
+          </p>
         </div>
 
-        <div class='pt-2 d-flex flex-wrap gap-2 flex-shrink-0'>
+        <LayoutEditor
+          v-if='tab === "user"'
+          v-model='userItems'
+          :catalog='catalog'
+        />
+        <LayoutEditor
+          v-else
+          v-model='adminItems'
+          :catalog='catalog'
+          :disabled='!manageAdminSidebar'
+        >
+          <template #actions>
+            <button
+              type='button'
+              class='btn btn-sm btn-outline-secondary'
+              :disabled='!writable || !manageAdminSidebar || !userItems.length'
+              @click='copyFromStandardUsers'
+            >
+              Copy From Standard Users
+            </button>
+          </template>
+        </LayoutEditor>
+
+        <div class='px-2 pb-3 d-flex flex-wrap gap-2'>
           <button
             type='button'
             class='btn btn-primary'
@@ -114,18 +145,29 @@
 
         <p
           v-if='meta'
-          class='text-secondary small mb-0 mt-2'
+          class='px-2 text-secondary small'
         >
           {{ meta }}
         </p>
       </div>
 
-      <aside class='sidebar-config-pane__preview min-w-0'>
+      <aside
+        class='sidebar-config-pane__preview'
+        aria-label='Compact sidebar preview'
+      >
         <SidebarPreview
+          v-if='tab === "user" || manageAdminSidebar'
           :title='tab === "user" ? "Standard users" : "Admins"'
           :prefs='activePrefs'
           :catalog='catalog'
         />
+        <div
+          v-else
+          class='sidebar-config-pane__preview-off text-secondary small text-center px-1'
+          title='Admin sidebar management is off'
+        >
+          Off
+        </div>
       </aside>
     </div>
   </div>
@@ -146,6 +188,7 @@ const props = defineProps<{
 }>();
 
 const mode = ref<ApplyMode>('soft');
+const manageAdminSidebar = ref(false);
 const userItems = ref<MenuPref[]>([]);
 const adminItems = ref<MenuPref[]>([]);
 const writable = ref(false);
@@ -166,6 +209,15 @@ const catalog = ref<CatalogItem[]>([]);
 const activePrefs = computed(() =>
   tab.value === 'user' ? userItems.value : adminItems.value,
 );
+
+function copyFromStandardUsers(): void {
+  if (!manageAdminSidebar.value) return;
+  adminItems.value = userItems.value.map((item) => ({
+    key: item.key,
+    visibility: item.visibility,
+  }));
+  status.value = 'Copied Standard Users layout into Admins (not saved yet).';
+}
 
 function refreshCatalog(): void {
   try {
@@ -203,6 +255,7 @@ async function reload(): Promise<void> {
   refreshCatalog();
   const cfg = await fetchConfig();
   mode.value = cfg.mode;
+  manageAdminSidebar.value = !!cfg.manageAdminSidebar;
   userItems.value = cfg.userItems;
   adminItems.value = cfg.adminItems;
   writable.value = !!cfg.writable;
@@ -221,10 +274,12 @@ async function onSave(): Promise<void> {
   try {
     const cfg = await saveConfig({
       mode: mode.value,
+      manageAdminSidebar: manageAdminSidebar.value,
       userItems: userItems.value,
       adminItems: adminItems.value,
     });
     mode.value = cfg.mode;
+    manageAdminSidebar.value = !!cfg.manageAdminSidebar;
     userItems.value = cfg.userItems;
     adminItems.value = cfg.adminItems;
     status.value = 'Layout saved.';
@@ -246,6 +301,7 @@ async function onPush(): Promise<void> {
   try {
     await saveConfig({
       mode: mode.value,
+      manageAdminSidebar: manageAdminSidebar.value,
       userItems: userItems.value,
       adminItems: adminItems.value,
     });
@@ -265,40 +321,53 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.sidebar-config-pane__grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
-  gap: 1rem;
-  align-items: stretch;
+.sidebar-config-pane {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  /* Sit inside MenuTemplate's Bootstrap .row without wrapping/overlapping */
+  flex: 0 0 100%;
+  padding-left: 0;
+  padding-right: 0;
 }
 
-.sidebar-config-pane__editor-scroll {
-  overflow: auto;
+.sidebar-config-pane__row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  gap: 0.5rem;
+  padding: 0 0.5rem 0.75rem 0;
+}
+
+.sidebar-config-pane__editor {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: hidden;
 }
 
 .sidebar-config-pane__preview {
-  position: sticky;
-  top: 0.5rem;
-  align-self: start;
-  max-height: calc(100vh - 120px);
+  flex: 0 0 60px;
+  width: 60px;
+  max-width: 60px;
+  align-self: stretch;
+  padding-top: 0.75rem;
 }
 
-.sidebar-config-pane__preview :deep(.sidebar-preview) {
-  max-height: calc(100vh - 120px);
+.sidebar-config-pane__preview-off {
+  width: 60px;
+  min-height: 240px;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-@media (max-width: 900px) {
-  .sidebar-config-pane__grid {
-    grid-template-columns: 1fr;
-  }
-
-  .sidebar-config-pane__preview {
-    position: static;
-    max-height: none;
-  }
-
-  .sidebar-config-pane__preview :deep(.sidebar-preview) {
-    max-height: 420px;
-  }
+[data-bs-theme='light'] .sidebar-config-pane__preview-off {
+  border-color: rgba(0, 0, 0, 0.15);
 }
 </style>

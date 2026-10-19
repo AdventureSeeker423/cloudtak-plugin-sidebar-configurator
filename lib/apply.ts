@@ -52,6 +52,11 @@ export async function applySidebarConfig(api: PluginAPI): Promise<SidebarConfig>
   }
   if (!menu) return config;
 
+  // System admins: never touch their sidebar unless manageAdminSidebar is on.
+  if (admin && !config.manageAdminSidebar) {
+    return config;
+  }
+
   const layout = admin ? config.adminItems : config.userItems;
   const currentOrder = menu.preferenceOrder?.value;
 
@@ -63,7 +68,7 @@ export async function applySidebarConfig(api: PluginAPI): Promise<SidebarConfig>
     return config;
   }
 
-  // Soft (and Forced admins): seed only when the user has never customized.
+  // Soft (and Forced admins when manageAdminSidebar): seed only when empty.
   if (layout.length && isEmptyOrder(currentOrder)) {
     await writeLayout(menu, layout);
   }

@@ -9,7 +9,7 @@ Requires CloudTAK **13.102** or newer. Apache-2.0.
 - **Admin-only menu entry** — “Sidebar Configurator” appears only for CloudTAK system admins (`requiresSystemAdmin`).
 - **Two layouts**
   - **Standard users** — applied to non-admins
-  - **Admins** — applied to system admins (Soft seed only)
+  - **Admins** — optional; **off by default** so system admin sidebars are never touched. Enable “Manage admin sidebars” to Soft-seed admins, and use **Copy From Standard Users** to start from the standard layout.
 - **Order + visibility** for each item: Full, Partial (hidden from compact rail), or Hidden
 - **Apply modes**
   - **Soft (default)** — apply the matching layout only when that user’s `menu_order` is empty. Users can customize afterward and are not overwritten.

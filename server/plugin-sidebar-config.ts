@@ -24,6 +24,7 @@ const ModeSchema = Type.Union([
 
 const ConfigSchema = Type.Object({
   mode: ModeSchema,
+  manageAdminSidebar: Type.Boolean(),
   userItems: Type.Array(MenuPrefSchema),
   adminItems: Type.Array(MenuPrefSchema),
   updatedAt: Type.Optional(Type.Union([Type.String(), Type.Null()])),
@@ -43,6 +44,7 @@ type MenuPref = { key: string; visibility: 'full' | 'partial' | 'hidden' };
 type ApplyMode = 'soft' | 'forced';
 type StoredConfig = {
   mode: ApplyMode;
+  manageAdminSidebar: boolean;
   userItems: MenuPref[];
   adminItems: MenuPref[];
   updatedAt: string | null;
@@ -100,6 +102,7 @@ async function bootstrap(config: ConfigStateless): Promise<void> {
     CREATE TABLE IF NOT EXISTS sidebar_config (
       id INTEGER PRIMARY KEY,
       mode TEXT NOT NULL DEFAULT 'soft',
+      manage_admin_sidebar BOOLEAN NOT NULL DEFAULT false,
       user_items TEXT NOT NULL DEFAULT '[]',
       admin_items TEXT NOT NULL DEFAULT '[]',
       updated_at TIMESTAMPTZ,
@@ -107,8 +110,12 @@ async function bootstrap(config: ConfigStateless): Promise<void> {
     )
   `);
   await config.pg.execute(sql`
-    INSERT INTO sidebar_config (id, mode, user_items, admin_items)
-    VALUES (${CONFIG_ID}, ${'soft'}, ${'[]'}, ${'[]'})
+    ALTER TABLE sidebar_config
+    ADD COLUMN IF NOT EXISTS manage_admin_sidebar BOOLEAN NOT NULL DEFAULT false
+  `);
+  await config.pg.execute(sql`
+    INSERT INTO sidebar_config (id, mode, manage_admin_sidebar, user_items, admin_items)
+    VALUES (${CONFIG_ID}, ${'soft'}, ${false}, ${'[]'}, ${'[]'})
     ON CONFLICT (id) DO NOTHING
   `);
 }
@@ -116,12 +123,13 @@ async function bootstrap(config: ConfigStateless): Promise<void> {
 async function readConfig(config: ConfigStateless): Promise<StoredConfig> {
   const rows = await query<{
     mode: string;
+    manage_admin_sidebar: boolean | string | null;
     user_items: unknown;
     admin_items: unknown;
     updated_at: string | null;
     updated_by: string | null;
   }>(config, sql`
-    SELECT mode, user_items, admin_items, updated_at, updated_by
+    SELECT mode, manage_admin_sidebar, user_items, admin_items, updated_at, updated_by
     FROM sidebar_config
     WHERE id = ${CONFIG_ID}
   `);
@@ -129,6 +137,7 @@ async function readConfig(config: ConfigStateless): Promise<StoredConfig> {
   if (!rows.length) {
     return {
       mode: 'soft',
+      manageAdminSidebar: false,
       userItems: [],
       adminItems: [],
       updatedAt: null,
@@ -148,6 +157,7 @@ async function readConfig(config: ConfigStateless): Promise<StoredConfig> {
 
   return {
     mode,
+    manageAdminSidebar: row.manage_admin_sidebar === true || row.manage_admin_sidebar === 't' || row.manage_admin_sidebar === 'true',
     userItems: normalizeItems(parse(row.user_items)),
     adminItems: normalizeItems(parse(row.admin_items)),
     updatedAt: row.updated_at ? String(row.updated_at) : null,
@@ -157,17 +167,25 @@ async function readConfig(config: ConfigStateless): Promise<StoredConfig> {
 
 async function writeConfig(
   config: ConfigStateless,
-  body: { mode: ApplyMode; userItems: MenuPref[]; adminItems: MenuPref[] },
+  body: {
+    mode: ApplyMode;
+    manageAdminSidebar: boolean;
+    userItems: MenuPref[];
+    adminItems: MenuPref[];
+  },
   updatedBy: string,
 ): Promise<StoredConfig> {
   const now = new Date().toISOString();
   const userJson = JSON.stringify(body.userItems);
   const adminJson = JSON.stringify(body.adminItems);
   await config.pg.execute(sql`
-    INSERT INTO sidebar_config (id, mode, user_items, admin_items, updated_at, updated_by)
+    INSERT INTO sidebar_config (
+      id, mode, manage_admin_sidebar, user_items, admin_items, updated_at, updated_by
+    )
     VALUES (
       ${CONFIG_ID},
       ${body.mode},
+      ${body.manageAdminSidebar},
       ${userJson},
       ${adminJson},
       ${now}::timestamptz,
@@ -175,6 +193,7 @@ async function writeConfig(
     )
     ON CONFLICT (id) DO UPDATE SET
       mode = EXCLUDED.mode,
+      manage_admin_sidebar = EXCLUDED.manage_admin_sidebar,
       user_items = EXCLUDED.user_items,
       admin_items = EXCLUDED.admin_items,
       updated_at = EXCLUDED.updated_at,
@@ -286,6 +305,7 @@ export default async function router(schema: Schema, config: ConfigStateless) {
     description: 'Save Soft/Forced mode and user/admin sidebar layouts (system admin only)',
     body: Type.Object({
       mode: ModeSchema,
+      manageAdminSidebar: Type.Boolean(),
       userItems: Type.Array(MenuPrefSchema),
       adminItems: Type.Array(MenuPrefSchema),
     }),
@@ -294,9 +314,15 @@ export default async function router(schema: Schema, config: ConfigStateless) {
     try {
       const user = await Auth.as_user(config, req, { admin: true });
       const mode = req.body.mode === 'forced' ? 'forced' : 'soft';
+      const manageAdminSidebar = !!req.body.manageAdminSidebar;
       const userItems = normalizeItems(req.body.userItems);
       const adminItems = normalizeItems(req.body.adminItems);
-      const stored = await writeConfig(config, { mode, userItems, adminItems }, user.email);
+      const stored = await writeConfig(config, {
+        mode,
+        manageAdminSidebar,
+        userItems,
+        adminItems,
+      }, user.email);
       res.json({
         ...stored,
         writable: true,

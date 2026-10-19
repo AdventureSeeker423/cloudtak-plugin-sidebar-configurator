@@ -1,46 +1,32 @@
 <template>
-  <div class='sidebar-preview h-100 d-flex flex-column'>
-    <div class='sidebar-preview__header px-3 py-2 flex-shrink-0'>
-      <div class='fw-semibold'>Live preview</div>
-      <div class='text-secondary small'>
-        {{ title }} — as users will see it
-      </div>
-    </div>
-
-    <div class='sidebar-preview__body flex-grow-1 overflow-auto px-2 pb-2'>
+  <div
+    class='sidebar-preview'
+    :title='`${title} — compact sidebar preview`'
+  >
+    <div class='sidebar-preview__rail overflow-auto'>
       <div
-        v-if='!visibleItems.length'
-        class='text-secondary small px-2 py-3'
+        v-if='!compactItems.length'
+        class='sidebar-preview__empty text-secondary'
       >
-        No visible items in this layout.
+        —
       </div>
 
       <div
-        v-for='item in visibleItems'
+        v-for='item in compactItems'
         :key='item.key'
-        class='sidebar-preview__item d-flex align-items-center gap-3 px-3 py-3'
-        :class='{
-          "sidebar-preview__item--partial": item.visibility === "partial",
-        }'
-        :title='item.visibility === "partial" ? "Partial: hidden from compact rail" : item.label'
+        class='sidebar-preview__icon-btn'
+        :title='item.label'
       >
-        <div class='sidebar-preview__icon flex-shrink-0 d-flex align-items-center justify-content-center'>
-          <component
-            :is='item.icon'
-            v-if='item.icon'
-            :size='32'
-            stroke='1.5'
-          />
-        </div>
-        <div class='flex-grow-1 text-truncate'>
-          <div class='sidebar-preview__label text-truncate'>{{ item.label }}</div>
-          <div
-            v-if='item.visibility === "partial"'
-            class='sidebar-preview__hint small text-truncate'
-          >
-            Compact rail: hidden
-          </div>
-        </div>
+        <component
+          :is='item.icon'
+          v-if='item.icon'
+          :size='28'
+          stroke='1.5'
+        />
+        <span
+          v-else
+          class='sidebar-preview__fallback'
+        >{{ item.label.slice(0, 1) }}</span>
       </div>
     </div>
   </div>
@@ -97,64 +83,61 @@ const orderedItems = computed((): PreviewItem[] => {
   return out;
 });
 
-/** Match real sidebar: hidden items are not shown. */
-const visibleItems = computed(() =>
-  orderedItems.value.filter((i) => i.visibility !== 'hidden'),
+/** Compact CloudTAK rail: only full-visibility items (partial + hidden omitted). */
+const compactItems = computed(() =>
+  orderedItems.value.filter((i) => i.visibility === 'full'),
 );
 </script>
 
 <style scoped>
 .sidebar-preview {
+  width: 60px;
+  height: 100%;
+  min-height: 240px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.28);
-  min-height: 280px;
+  background: rgba(0, 0, 0, 0.35);
+  overflow: hidden;
 }
 
 [data-bs-theme='light'] .sidebar-preview {
   border-color: rgba(0, 0, 0, 0.12);
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.82);
 }
 
-.sidebar-preview__header {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+.sidebar-preview__rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.25rem;
+  height: 100%;
+  max-height: calc(100vh - 140px);
 }
 
-[data-bs-theme='light'] .sidebar-preview__header {
-  border-bottom-color: rgba(0, 0, 0, 0.1);
-}
-
-.sidebar-preview__item {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  color: inherit;
-}
-
-[data-bs-theme='light'] .sidebar-preview__item {
-  border-bottom-color: rgba(0, 0, 0, 0.06);
-}
-
-.sidebar-preview__item--partial {
-  opacity: 0.72;
-}
-
-.sidebar-preview__icon {
-  width: 40px;
-  height: 40px;
+.sidebar-preview__icon-btn {
+  width: 44px;
+  height: 44px;
   border-radius: 6px;
-  background: rgba(0, 0, 0, 0.22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: inherit;
+  background: rgba(0, 0, 0, 0.22);
+  flex-shrink: 0;
 }
 
-[data-bs-theme='light'] .sidebar-preview__icon {
+[data-bs-theme='light'] .sidebar-preview__icon-btn {
   background: rgba(var(--tblr-primary-rgb, 32, 107, 196), 0.08);
 }
 
-.sidebar-preview__label {
-  font-size: 1rem;
-  font-weight: 600;
+.sidebar-preview__fallback {
+  font-weight: 700;
+  font-size: 0.9rem;
 }
 
-.sidebar-preview__hint {
-  opacity: 0.75;
+.sidebar-preview__empty {
+  font-size: 0.75rem;
+  padding-top: 0.5rem;
 }
 </style>

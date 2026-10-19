@@ -13,6 +13,8 @@ export type MenuPref = {
 
 export type SidebarConfig = {
   mode: ApplyMode;
+  /** When false (default), system admin sidebars are never seeded or overwritten. */
+  manageAdminSidebar: boolean;
   userItems: MenuPref[];
   adminItems: MenuPref[];
   updatedAt?: string | null;
@@ -23,6 +25,7 @@ export type SidebarConfig = {
 
 export const DEFAULT_CONFIG: SidebarConfig = {
   mode: 'soft',
+  manageAdminSidebar: false,
   userItems: [],
   adminItems: [],
 };

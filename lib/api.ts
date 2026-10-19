@@ -35,6 +35,7 @@ function parseConfig(raw: unknown): SidebarConfig {
   const row = (raw && typeof raw === 'object') ? raw as Record<string, unknown> : {};
   return {
     mode: row.mode === 'forced' ? 'forced' : 'soft',
+    manageAdminSidebar: !!row.manageAdminSidebar,
     userItems: asItems(row.userItems),
     adminItems: asItems(row.adminItems),
     updatedAt: row.updatedAt != null ? String(row.updatedAt) : null,
@@ -56,6 +57,7 @@ export async function fetchConfig(): Promise<SidebarConfig> {
 
 export async function saveConfig(payload: {
   mode: ApplyMode;
+  manageAdminSidebar: boolean;
   userItems: MenuPref[];
   adminItems: MenuPref[];
 }): Promise<SidebarConfig> {
