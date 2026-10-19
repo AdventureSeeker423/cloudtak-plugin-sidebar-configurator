@@ -36,14 +36,14 @@
           class='drag-handle text-secondary'
           :style='disabled ? "cursor: not-allowed" : "cursor: grab"'
         >
-          <IconGripVertical :size='18' stroke='1.5' />
+          <IconGripVertical :size='18' stroke='1' />
         </span>
         <component
           :is='item.icon'
           v-if='item.icon'
           class='sidebar-config-item-icon flex-shrink-0'
           :size='24'
-          stroke='1.5'
+          stroke='1'
         />
         <div class='flex-grow-1 text-truncate fw-semibold'>
           {{ item.label }}
@@ -59,12 +59,12 @@
           <IconEye
             v-if='item.visibility !== "hidden"'
             :size='18'
-            stroke='1.5'
+            stroke='1'
           />
           <IconEyeOff
             v-else
             :size='18'
-            stroke='1.5'
+            stroke='1'
           />
         </button>
       </div>
@@ -229,6 +229,12 @@ watch(
   width: 24px;
   height: 24px;
   color: inherit;
+}
+
+.sidebar-config-layout-list :deep(.list-group-item) {
+  background-color: var(--cloudtak-inset-bg, var(--tblr-bg-surface-secondary, transparent));
+  color: var(--cloudtak-surface-color, var(--tblr-body-color));
+  border-color: var(--cloudtak-inset-border, var(--tblr-border-color, rgba(128, 128, 128, 0.25)));
 }
 
 .sidebar-config-item--hidden {

@@ -21,7 +21,7 @@
           :is='item.icon'
           v-if='item.icon'
           :size='28'
-          stroke='1.5'
+          stroke='1'
         />
         <span
           v-else
@@ -90,19 +90,16 @@ const compactItems = computed(() =>
 </script>
 
 <style scoped>
+/* Inherit CloudTAK / Tabler surface tokens so light and dark both read correctly. */
 .sidebar-preview {
   width: 60px;
   height: 100%;
   min-height: 240px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--cloudtak-surface-border, var(--tblr-border-color, rgba(128, 128, 128, 0.3)));
+  border-radius: 6px;
+  background: var(--cloudtak-inset-bg, var(--cloudtak-panel-bg, var(--cloudtak-surface-bg, var(--tblr-bg-surface))));
+  color: var(--cloudtak-surface-color, var(--tblr-body-color));
   overflow: hidden;
-}
-
-[data-bs-theme='light'] .sidebar-preview {
-  border-color: rgba(0, 0, 0, 0.12);
-  background: rgba(255, 255, 255, 0.82);
 }
 
 .sidebar-preview__rail {
@@ -123,12 +120,9 @@ const compactItems = computed(() =>
   align-items: center;
   justify-content: center;
   color: inherit;
-  background: rgba(0, 0, 0, 0.22);
+  background: var(--cloudtak-hover-bg, color-mix(in srgb, var(--tblr-primary, #206bc4) 12%, transparent));
+  border: 1px solid var(--cloudtak-inset-border, transparent);
   flex-shrink: 0;
-}
-
-[data-bs-theme='light'] .sidebar-preview__icon-btn {
-  background: rgba(var(--tblr-primary-rgb, 32, 107, 196), 0.08);
 }
 
 .sidebar-preview__fallback {

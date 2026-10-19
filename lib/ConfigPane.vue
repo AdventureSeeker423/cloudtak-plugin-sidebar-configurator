@@ -1,18 +1,20 @@
 <template>
   <div class='col-12 sidebar-config-pane'>
     <div
-      v-if='error'
-      class='alert alert-danger mx-2 mt-2 mb-0'
-      role='alert'
+      v-if='error || status'
+      class='px-2 pt-2'
     >
-      {{ error }}
-    </div>
-    <div
-      v-if='status'
-      class='alert alert-success mx-2 mt-2 mb-0'
-      role='alert'
-    >
-      {{ status }}
+      <TablerInlineAlert
+        v-if='error'
+        severity='danger'
+        title='Something Went Wrong'
+        :description='error'
+      />
+      <TablerInlineAlert
+        v-else-if='status'
+        severity='success'
+        :title='status'
+      />
     </div>
 
     <div class='sidebar-config-pane__row'>
@@ -163,6 +165,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { Component } from 'vue';
 import type { PluginAPI } from '@tak-ps/cloudtak';
+import { TablerInlineAlert } from '@tak-ps/vue-tabler';
 import { useMapStore } from '../../../src/stores/map.ts';
 import LayoutEditor, { type CatalogItem } from './LayoutEditor.vue';
 import SidebarPreview from './SidebarPreview.vue';
@@ -370,6 +373,13 @@ onBeforeUnmount(() => {
   flex: 0 0 100%;
   padding-left: 0;
   padding-right: 0;
+  color: var(--cloudtak-surface-color, var(--tblr-body-color));
+}
+
+@media (pointer: coarse) {
+  .sidebar-config-pane :deep(.btn) {
+    min-height: 44px;
+  }
 }
 
 .sidebar-config-pane__row {
@@ -400,14 +410,12 @@ onBeforeUnmount(() => {
 .sidebar-config-pane__preview-off {
   width: 60px;
   min-height: 240px;
-  border: 1px dashed rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
+  border: 1px dashed var(--cloudtak-surface-border, var(--tblr-border-color, rgba(128, 128, 128, 0.35)));
+  border-radius: 6px;
+  background: var(--cloudtak-inset-bg, transparent);
+  color: var(--tblr-secondary-color, var(--tblr-secondary));
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-[data-bs-theme='light'] .sidebar-config-pane__preview-off {
-  border-color: rgba(0, 0, 0, 0.15);
 }
 </style>
