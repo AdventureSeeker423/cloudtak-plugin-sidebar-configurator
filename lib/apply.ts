@@ -1,6 +1,6 @@
 import type { PluginAPI } from '@tak-ps/cloudtak';
-import { useMapStore } from '../../src/stores/map.ts';
-import ProfileConfig from '../../src/base/profile.ts';
+import { useMapStore } from '../../../src/stores/map.ts';
+import ProfileConfig from '../../../src/base/profile.ts';
 import { fetchConfig } from './api.ts';
 import { disableForcedLock, enableForcedLock } from './lock.ts';
 import type { MenuPref, SidebarConfig } from './constants.ts';

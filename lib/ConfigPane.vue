@@ -177,7 +177,7 @@
 import { computed, onMounted, ref } from 'vue';
 import type { Component } from 'vue';
 import type { PluginAPI } from '@tak-ps/cloudtak';
-import { useMapStore } from '../../src/stores/map.ts';
+import { useMapStore } from '../../../src/stores/map.ts';
 import LayoutEditor, { type CatalogItem } from './LayoutEditor.vue';
 import SidebarPreview from './SidebarPreview.vue';
 import { fetchConfig, pushConfig, saveConfig } from './api.ts';

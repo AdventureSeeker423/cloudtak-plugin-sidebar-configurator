@@ -1,4 +1,4 @@
-import { std } from '../../src/std.ts';
+import { std } from '../../../src/std.ts';
 import {
   API_BASE,
   DEFAULT_CONFIG,

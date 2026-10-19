@@ -1,5 +1,5 @@
 import type { PluginAPI } from '@tak-ps/cloudtak';
-import { useMapStore } from '../../src/stores/map.ts';
+import { useMapStore } from '../../../src/stores/map.ts';
 import type { MenuPref } from './constants.ts';
 
 const STYLE_ID = 'sidebar-configurator-forced-lock';
