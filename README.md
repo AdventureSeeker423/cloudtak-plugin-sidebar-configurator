@@ -23,7 +23,7 @@ Requires CloudTAK **13.102** or newer. Apache-2.0.
 Do not rely on `WEB_PLUGINS` alone — the shared config API must be installed too:
 
 ```bash
-git clone https://github.com/AdventureSeeker423/cloudtak-plugin-sidebar-configurator.git
+git clone https://github.com/ValleyTacticalSolutions/cloudtak-plugin-sidebar-configurator.git
 cd cloudtak-plugin-sidebar-configurator
 ./install.sh
 ```

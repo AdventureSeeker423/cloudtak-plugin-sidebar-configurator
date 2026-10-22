@@ -37,7 +37,7 @@
 set -euo pipefail
 
 INSTALL_DIR_NAME="sidebar-configurator"
-PLUGIN_GIT_URL="${SIDEBAR_CONFIG_GIT_URL:-https://github.com/AdventureSeeker423/cloudtak-plugin-sidebar-configurator.git}"
+PLUGIN_GIT_URL="${SIDEBAR_CONFIG_GIT_URL:-https://github.com/ValleyTacticalSolutions/cloudtak-plugin-sidebar-configurator.git}"
 PLUGIN_GIT_REF="${SIDEBAR_CONFIG_GIT_REF:-main}"
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
