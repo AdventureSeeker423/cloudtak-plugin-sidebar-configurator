@@ -42,7 +42,7 @@ export async function applySidebarConfig(api: PluginAPI): Promise<SidebarConfig>
   const config = await fetchConfig();
   const admin = await isSystemAdmin();
 
-  let menu: MenuManagerLike | null = null;
+  let menu: MenuManagerLike;
   try {
     const mapStore = useMapStore(api.pinia);
     menu = mapStore.menu as unknown as MenuManagerLike;

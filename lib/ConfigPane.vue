@@ -1,164 +1,171 @@
 <template>
-  <div class='col-12 sidebar-config-pane'>
-    <div
-      v-if='error || status'
-      class='px-2 pt-2'
-    >
-      <TablerInlineAlert
-        v-if='error'
-        severity='danger'
-        title='Something Went Wrong'
-        :description='error'
-      />
-      <TablerInlineAlert
-        v-else-if='status'
-        severity='success'
-        :title='status'
-      />
-    </div>
-
-    <div class='sidebar-config-pane__row'>
-      <div class='sidebar-config-pane__editor'>
-        <div class='px-2 pt-3 pb-2'>
-          <div class='fw-semibold mb-1'>Apply Mode</div>
-          <div class='btn-group w-100' role='group'>
-            <button
-              type='button'
-              class='btn'
-              :class='mode === "off" ? "btn-primary" : "btn-outline-secondary"'
-              :disabled='!writable || !!busy'
-              @click='mode = "off"'
-            >
-              Off
-            </button>
-            <button
-              type='button'
-              class='btn'
-              :class='mode === "soft" ? "btn-primary" : "btn-outline-secondary"'
-              :disabled='!writable || !!busy'
-              @click='mode = "soft"'
-            >
-              New Users Only
-            </button>
-            <button
-              type='button'
-              class='btn'
-              :class='mode === "forced" ? "btn-primary" : "btn-outline-secondary"'
-              :disabled='!writable || !!busy'
-              @click='mode = "forced"'
-            >
-              Forced
-            </button>
-          </div>
-        </div>
-
-        <ul class='nav nav-tabs px-2'>
-          <li class='nav-item'>
-            <button
-              type='button'
-              class='nav-link'
-              :class='{ active: tab === "user" }'
-              @click='tab = "user"'
-            >
-              Standard Users
-            </button>
-          </li>
-          <li class='nav-item'>
-            <button
-              type='button'
-              class='nav-link'
-              :class='{ active: tab === "admin" }'
-              @click='tab = "admin"'
-            >
-              Admins
-            </button>
-          </li>
-        </ul>
-
+    <div class='col-12 sidebar-config-pane'>
         <div
-          v-if='tab === "admin"'
-          class='px-2 pt-2 pb-1'
+            v-if='error || status'
+            class='px-2 pt-2'
         >
-          <label class='form-check'>
-            <input
-              v-model='manageAdminSidebar'
-              class='form-check-input'
-              type='checkbox'
-              :disabled='!writable || !!busy'
+            <TablerInlineAlert
+                v-if='error'
+                severity='danger'
+                title='Something Went Wrong'
+                :description='error'
+            />
+            <TablerInlineAlert
+                v-else-if='status'
+                severity='success'
+                :title='status'
+            />
+        </div>
+
+        <div class='sidebar-config-pane__row'>
+            <div class='sidebar-config-pane__editor'>
+                <div class='px-2 pt-3 pb-2'>
+                    <div class='fw-semibold mb-1'>
+                        Apply Mode
+                    </div>
+                    <div
+                        class='btn-group w-100'
+                        role='group'
+                    >
+                        <button
+                            type='button'
+                            class='btn'
+                            :class='mode === "off" ? "btn-primary" : "btn-outline-secondary"'
+                            :disabled='!writable || !!busy'
+                            @click='mode = "off"'
+                        >
+                            Off
+                        </button>
+                        <button
+                            type='button'
+                            class='btn'
+                            :class='mode === "soft" ? "btn-primary" : "btn-outline-secondary"'
+                            :disabled='!writable || !!busy'
+                            @click='mode = "soft"'
+                        >
+                            New Users Only
+                        </button>
+                        <button
+                            type='button'
+                            class='btn'
+                            :class='mode === "forced" ? "btn-primary" : "btn-outline-secondary"'
+                            :disabled='!writable || !!busy'
+                            @click='mode = "forced"'
+                        >
+                            Forced
+                        </button>
+                    </div>
+                </div>
+
+                <ul class='nav nav-tabs px-2'>
+                    <li class='nav-item'>
+                        <button
+                            type='button'
+                            class='nav-link'
+                            :class='{ active: tab === "user" }'
+                            @click='tab = "user"'
+                        >
+                            Standard Users
+                        </button>
+                    </li>
+                    <li class='nav-item'>
+                        <button
+                            type='button'
+                            class='nav-link'
+                            :class='{ active: tab === "admin" }'
+                            @click='tab = "admin"'
+                        >
+                            Admins
+                        </button>
+                    </li>
+                </ul>
+
+                <div
+                    v-if='tab === "admin"'
+                    class='px-2 pt-2 pb-1'
+                >
+                    <label class='form-check'>
+                        <input
+                            v-model='manageAdminSidebar'
+                            class='form-check-input'
+                            type='checkbox'
+                            :disabled='!writable || !!busy'
+                        >
+                        <span class='form-check-label'>
+                            Manage Admin Sidebars
+                        </span>
+                    </label>
+                </div>
+
+                <LayoutEditor
+                    v-if='tab === "user"'
+                    v-model='userItems'
+                    :catalog='catalog'
+                    :disabled='!writable'
+                />
+                <LayoutEditor
+                    v-else
+                    v-model='adminItems'
+                    :catalog='catalog'
+                    :disabled='!writable || !manageAdminSidebar'
+                >
+                    <template #actions>
+                        <button
+                            type='button'
+                            class='btn btn-sm btn-outline-secondary'
+                            :disabled='!writable || !manageAdminSidebar || !userItems.length || !!busy'
+                            @click='copyFromStandardUsers'
+                        >
+                            Copy From Standard Users
+                        </button>
+                    </template>
+                </LayoutEditor>
+
+                <div class='px-2 pb-3 d-flex flex-wrap gap-2 align-items-center'>
+                    <button
+                        type='button'
+                        class='btn btn-outline-primary'
+                        :disabled='busy || !writable'
+                        @click='onPush'
+                    >
+                        {{ busy === 'push' ? 'Overwriting…' : 'Overwrite All Toolbars' }}
+                    </button>
+                    <span
+                        v-if='busy === "save"'
+                        class='text-secondary small'
+                    >
+                        Saving…
+                    </span>
+                </div>
+
+                <p
+                    v-if='meta'
+                    class='px-2 text-secondary small'
+                >
+                    {{ meta }}
+                </p>
+            </div>
+
+            <aside
+                class='sidebar-config-pane__preview'
+                aria-label='Compact Sidebar Preview'
             >
-            <span class='form-check-label'>
-              Manage Admin Sidebars
-            </span>
-          </label>
+                <SidebarPreview
+                    v-if='tab === "user" || manageAdminSidebar'
+                    :title='tab === "user" ? "Standard Users" : "Admins"'
+                    :prefs='activePrefs'
+                    :catalog='catalog'
+                />
+                <div
+                    v-else
+                    class='sidebar-config-pane__preview-off text-secondary small text-center px-1'
+                    title='Admin Sidebar Management Is Off'
+                >
+                    Off
+                </div>
+            </aside>
         </div>
-
-        <LayoutEditor
-          v-if='tab === "user"'
-          v-model='userItems'
-          :catalog='catalog'
-          :disabled='!writable'
-        />
-        <LayoutEditor
-          v-else
-          v-model='adminItems'
-          :catalog='catalog'
-          :disabled='!writable || !manageAdminSidebar'
-        >
-          <template #actions>
-            <button
-              type='button'
-              class='btn btn-sm btn-outline-secondary'
-              :disabled='!writable || !manageAdminSidebar || !userItems.length || !!busy'
-              @click='copyFromStandardUsers'
-            >
-              Copy From Standard Users
-            </button>
-          </template>
-        </LayoutEditor>
-
-        <div class='px-2 pb-3 d-flex flex-wrap gap-2 align-items-center'>
-          <button
-            type='button'
-            class='btn btn-outline-primary'
-            :disabled='busy || !writable'
-            @click='onPush'
-          >
-            {{ busy === 'push' ? 'Overwriting…' : 'Overwrite All Toolbars' }}
-          </button>
-          <span
-            v-if='busy === "save"'
-            class='text-secondary small'
-          >Saving…</span>
-        </div>
-
-        <p
-          v-if='meta'
-          class='px-2 text-secondary small'
-        >
-          {{ meta }}
-        </p>
-      </div>
-
-      <aside
-        class='sidebar-config-pane__preview'
-        aria-label='Compact Sidebar Preview'
-      >
-        <SidebarPreview
-          v-if='tab === "user" || manageAdminSidebar'
-          :title='tab === "user" ? "Standard Users" : "Admins"'
-          :prefs='activePrefs'
-          :catalog='catalog'
-        />
-        <div
-          v-else
-          class='sidebar-config-pane__preview-off text-secondary small text-center px-1'
-          title='Admin Sidebar Management Is Off'
-        >
-          Off
-        </div>
-      </aside>
     </div>
-  </div>
 </template>
 
 <script setup lang='ts'>

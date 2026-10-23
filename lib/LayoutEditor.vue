@@ -1,75 +1,78 @@
 <template>
-  <div class='px-2 pb-3'>
-    <div class='d-flex align-items-center justify-content-end mb-2 gap-2 flex-wrap'>
-      <slot name='actions' />
-      <button
-        type='button'
-        class='btn btn-sm btn-outline-secondary'
-        :disabled='disabled'
-        @click='seedFromLive'
-      >
-        Use My Current Sidebar
-      </button>
-    </div>
-
-    <div
-      v-if='!items.length'
-      class='text-secondary small py-3'
-    >
-      No Menu Items Available Yet. Open The Main Menu Once, Then Return Here.
-    </div>
-
-    <div
-      v-else
-      ref='listEl'
-      class='list-group list-group-flush sidebar-config-layout-list'
-      :class='{ "sidebar-config-layout--disabled": disabled }'
-    >
-      <div
-        v-for='item in items'
-        :key='item.key'
-        class='list-group-item d-flex align-items-center gap-2 px-2 py-2'
-        :class='{ "sidebar-config-item--hidden": item.visibility === "hidden" }'
-        :data-key='item.key'
-      >
-        <span
-          class='drag-handle text-secondary'
-          :style='disabled ? "cursor: not-allowed" : "cursor: grab"'
-        >
-          <IconGripVertical :size='18' stroke='1' />
-        </span>
-        <component
-          :is='item.icon'
-          v-if='item.icon'
-          class='sidebar-config-item-icon flex-shrink-0'
-          :size='24'
-          stroke='1'
-        />
-        <div class='flex-grow-1 text-truncate fw-semibold'>
-          {{ item.label }}
+    <div class='px-2 pb-3'>
+        <div class='d-flex align-items-center justify-content-end mb-2 gap-2 flex-wrap'>
+            <slot name='actions' />
+            <button
+                type='button'
+                class='btn btn-sm btn-outline-secondary'
+                :disabled='disabled'
+                @click='seedFromLive'
+            >
+                Use My Current Sidebar
+            </button>
         </div>
-        <button
-          type='button'
-          class='btn btn-sm btn-ghost-secondary'
-          :title='item.visibility === "hidden" ? "Hidden — Click To Show" : "Visible — Click To Hide"'
-          :aria-label='item.visibility === "hidden" ? "Show Item" : "Hide Item"'
-          :disabled='disabled'
-          @click='toggleVisibility(item.key)'
+
+        <div
+            v-if='!items.length'
+            class='text-secondary small py-3'
         >
-          <IconEye
-            v-if='item.visibility !== "hidden"'
-            :size='18'
-            stroke='1'
-          />
-          <IconEyeOff
+            No Menu Items Available Yet. Open The Main Menu Once, Then Return Here.
+        </div>
+
+        <div
             v-else
-            :size='18'
-            stroke='1'
-          />
-        </button>
-      </div>
+            ref='listEl'
+            class='list-group list-group-flush sidebar-config-layout-list'
+            :class='{ "sidebar-config-layout--disabled": disabled }'
+        >
+            <div
+                v-for='item in items'
+                :key='item.key'
+                class='list-group-item d-flex align-items-center gap-2 px-2 py-2'
+                :class='{ "sidebar-config-item--hidden": item.visibility === "hidden" }'
+                :data-key='item.key'
+            >
+                <span
+                    class='drag-handle text-secondary'
+                    :style='disabled ? "cursor: not-allowed" : "cursor: grab"'
+                >
+                    <IconGripVertical
+                        :size='18'
+                        stroke='1'
+                    />
+                </span>
+                <component
+                    :is='item.icon'
+                    v-if='item.icon'
+                    class='sidebar-config-item-icon flex-shrink-0'
+                    :size='24'
+                    stroke='1'
+                />
+                <div class='flex-grow-1 text-truncate fw-semibold'>
+                    {{ item.label }}
+                </div>
+                <button
+                    type='button'
+                    class='btn btn-sm btn-ghost-secondary'
+                    :title='item.visibility === "hidden" ? "Hidden — Click To Show" : "Visible — Click To Hide"'
+                    :aria-label='item.visibility === "hidden" ? "Show Item" : "Hide Item"'
+                    :disabled='disabled'
+                    @click='toggleVisibility(item.key)'
+                >
+                    <IconEye
+                        v-if='item.visibility !== "hidden"'
+                        :size='18'
+                        stroke='1'
+                    />
+                    <IconEyeOff
+                        v-else
+                        :size='18'
+                        stroke='1'
+                    />
+                </button>
+            </div>
+        </div>
     </div>
-  </div>
 </template>
 
 <script setup lang='ts'>

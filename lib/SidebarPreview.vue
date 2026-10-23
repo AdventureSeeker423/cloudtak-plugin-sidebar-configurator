@@ -1,35 +1,37 @@
 <template>
-  <div
-    class='sidebar-preview'
-    :title='`${title} — Compact Sidebar Preview`'
-  >
-    <div class='sidebar-preview__rail overflow-auto'>
-      <div
-        v-if='!compactItems.length'
-        class='sidebar-preview__empty text-secondary'
-      >
-        —
-      </div>
+    <div
+        class='sidebar-preview'
+        :title='`${title} — Compact Sidebar Preview`'
+    >
+        <div class='sidebar-preview__rail overflow-auto'>
+            <div
+                v-if='!compactItems.length'
+                class='sidebar-preview__empty text-secondary'
+            >
+                —
+            </div>
 
-      <div
-        v-for='item in compactItems'
-        :key='item.key'
-        class='sidebar-preview__icon-btn'
-        :title='item.label'
-      >
-        <component
-          :is='item.icon'
-          v-if='item.icon'
-          :size='28'
-          stroke='1'
-        />
-        <span
-          v-else
-          class='sidebar-preview__fallback'
-        >{{ item.label.slice(0, 1) }}</span>
-      </div>
+            <div
+                v-for='item in compactItems'
+                :key='item.key'
+                class='sidebar-preview__icon-btn'
+                :title='item.label'
+            >
+                <component
+                    :is='item.icon'
+                    v-if='item.icon'
+                    :size='28'
+                    stroke='1'
+                />
+                <span
+                    v-else
+                    class='sidebar-preview__fallback'
+                >
+                    {{ item.label.slice(0, 1) }}
+                </span>
+            </div>
+        </div>
     </div>
-  </div>
 </template>
 
 <script setup lang='ts'>
